@@ -32,14 +32,24 @@ type Lexer struct {
 	tokens            []token.Token
 }
 
+func (l *Lexer) String() string {
+	var out bytes.Buffer
+	for _, tok := range l.tokens {
+		out.WriteString(fmt.Sprintf("<%s, %s , [%d]>\n", tok.Type, tok.Literal, tok.Line))
+	}
+	return out.String()
+}
+
 // LoadBuffer reads a chunk of data from the recieveChan
 func (l *Lexer) LoadBuffer() bool {
 
+	// recieve chunk from the channel
 	data, ok := <-l.recieveChan
 	if !ok {
 		return false
 	}
 	runes := []rune(string(data))
+
 	// swap buffers
 	if l.CurBuf == &l.buffer1 {
 		l.buffer2 = runes
@@ -155,6 +165,13 @@ func (l *Lexer) NextToken() token.Token {
 		} else {
 			tok = newToken(token.ASSIGN, curChar, l.currentLineNumber)
 		}
+	case '!':
+		if l.peekChar() == '=' {
+			l.readChar()
+			tok = newToken(token.NOT_EQUAL, curChar+string(l.ch), l.currentLineNumber)
+		} else {
+			tok = newToken(token.BANG, curChar, l.currentLineNumber)
+		}
 	case '"':
 		tok = newToken(token.QUOTE, curChar, l.currentLineNumber)
 	case ';':
@@ -169,20 +186,12 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.LBRACE, curChar, l.currentLineNumber)
 	case '}':
 		tok = newToken(token.RBRACE, curChar, l.currentLineNumber)
-
 	case '+':
 		tok = newToken(token.PLUS, curChar, l.currentLineNumber)
 	case '-':
 		tok = newToken(token.MINUS, curChar, l.currentLineNumber)
 	case '*':
 		tok = newToken(token.ASTERISK, curChar, l.currentLineNumber)
-	case '!':
-		if l.peekChar() == '=' {
-			l.readChar()
-			tok = newToken(token.NOT_EQUAL, curChar+string(l.ch), l.currentLineNumber)
-		} else {
-			tok = newToken(token.BANG, curChar, l.currentLineNumber)
-		}
 	case '/':
 		tok = newToken(token.SLASH, curChar, l.currentLineNumber)
 	case '%':
@@ -201,13 +210,13 @@ func (l *Lexer) NextToken() token.Token {
 			tokenType := token.LookUpIdent(identifier)
 			token := newToken(tokenType, identifier, l.currentLineNumber)
 
-			// l.addToken(token) // add token to l.tokens
+			l.addToken(token) // add token to l.tokens
 			return token
 		} else if isDigit(l.ch) {
 			tok.Literal = string(l.readNumber())
 			tok.Type = token.INT
-
-			// l.addToken(tok)
+			tok.Line = l.currentLineNumber
+			l.addToken(tok)
 			return tok
 		} else {
 			tok = newToken(token.ILLEGAL, curChar, l.currentLineNumber)
@@ -216,7 +225,7 @@ func (l *Lexer) NextToken() token.Token {
 
 	// read next char
 	l.readChar()
-	// l.addToken(tok)
+	l.addToken(tok)
 	return tok
 }
 
@@ -224,20 +233,11 @@ func (l *Lexer) addToken(token token.Token) {
 	l.tokens = append(l.tokens, token)
 }
 
-func (l *Lexer) String() string {
-	var out bytes.Buffer
-	for _, tok := range l.tokens {
-		out.WriteString(fmt.Sprintf("<%s, %s>\n", tok.Type, tok.Literal))
-	}
-	return out.String()
-}
-
 // ------------------ Helper functions -----------------------------
 
 func New(recieve <-chan []byte) *Lexer {
-	l := &Lexer{recieveChan: recieve}
+	l := &Lexer{recieveChan: recieve, currentLineNumber: 1}
 	l.CurBuf = &l.buffer2
-	l.currentLineNumber = 1
 	return l
 }
 

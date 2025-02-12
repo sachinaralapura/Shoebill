@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	// repl.Start(os.Stdin, os.Stdout)
 	// create channels
 	fileToLexChan := make(chan []byte)
 
@@ -19,10 +20,9 @@ func main() {
 	lexer := lexer.New(fileToLexChan)
 	lexer.LoadBuffer()
 
-	// fmt.Println(lexer)
-
 	parser := parser.New(lexer)
 	program := parser.ParseProgram()
+	fmt.Println(lexer)
 
 	fmt.Println(program)
 }

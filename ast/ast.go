@@ -2,6 +2,7 @@ package ast
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 
 	"github.com/sachinaralapura/shoebill/token"
@@ -110,8 +111,14 @@ func (es *ExpressionStatement) String() string {
 }
 
 // ---------------------- Expressions -------------------
-// ---------------------- Identifier --------------------
-// expression interface
+
+/*
+Identifier
+implements expression interface
+
+	It represent "Identifiers" in AST ex:
+	>> let five = 5;
+*/
 type Identifier struct {
 	Token token.Token
 	Value string
@@ -120,3 +127,81 @@ type Identifier struct {
 func (i *Identifier) expressionNode()      {}
 func (i *Identifier) TokenLiteral() string { return i.Token.Literal }
 func (i *Identifier) String() string       { return i.Value }
+
+/*
+Implements expression interface
+
+	Integer Literal expression ex :
+	>> 5;
+	>> 4;
+	>> 34;
+*/
+type IntegerLiteral struct {
+	Token token.Token
+	Value int64
+}
+
+func (i *IntegerLiteral) expressionNode()      {}
+func (i *IntegerLiteral) TokenLiteral() string { return i.Token.Literal }
+func (i *IntegerLiteral) String() string       { return fmt.Sprint(i.Value) }
+
+/*
+Boolen expresssion
+Implements expression interface
+*/
+type BoolenExpression struct {
+	Token token.Token
+	Value bool
+}
+
+func (be *BoolenExpression) expressionNode()      {}
+func (be *BoolenExpression) TokenLiteral() string { return be.Token.Literal }
+func (be *BoolenExpression) String() string       { return be.Token.Literal }
+
+/*
+Prefix Expression , Implements Expressoin interface
+-5 or !true
+*/
+type PrefixExpression struct {
+	Token    token.Token
+	Operator string
+	Right    Expression
+}
+
+func (pe *PrefixExpression) expressionNode()      {}
+func (pe *PrefixExpression) TokenLiteral() string { return pe.Token.Literal }
+func (pe *PrefixExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("(")
+	out.WriteString(pe.Operator)
+	out.WriteString(pe.Right.String())
+	out.WriteString(")")
+
+	return out.String()
+}
+
+/*
+Infix Expression , Implements Expression interface
+<Expression> <Infix Operator> <Expression>
+*/
+type InfixExpression struct {
+	Token    token.Token
+	Left     Expression
+	Operator string
+	Right    Expression
+}
+
+func (ie *InfixExpression) expressionNode()      {}
+func (ie *InfixExpression) TokenLiteral() string { return ie.Token.Literal }
+func (ie *InfixExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("(")
+	out.WriteString(ie.Left.String())
+	out.WriteString(" " + ie.Operator + " ")
+	out.WriteString(ie.Right.String())
+	out.WriteString(")")
+
+	return out.String()
+}
