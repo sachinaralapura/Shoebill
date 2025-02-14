@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/sachinaralapura/shoebill/token"
 )
@@ -41,7 +42,8 @@ func (p *Program) TokenLiteral() string {
 func (p *Program) String() string {
 	var out bytes.Buffer
 	for _, s := range p.Statements {
-		_, err := out.WriteString(s.String() + "\n")
+		_, err := out.WriteString(s.String())
+		out.WriteString("\n")
 		if err != nil {
 			log.Println(err)
 		}
@@ -110,6 +112,25 @@ func (es *ExpressionStatement) String() string {
 	return ""
 }
 
+// --------------------- Block statements --------------------
+// statement interface
+type BlockStatement struct {
+	Token      token.Token
+	Statements []Statement
+}
+
+func (bs *BlockStatement) statementNode()       {}
+func (bs *BlockStatement) TokenLiteral() string { return bs.Token.Literal }
+func (bs *BlockStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString("{")
+	for _, statement := range bs.Statements {
+		out.WriteString(statement.String())
+	}
+	out.WriteString("}")
+	return out.String()
+}
+
 // ---------------------- Expressions -------------------
 
 /*
@@ -159,6 +180,86 @@ func (be *BoolenExpression) TokenLiteral() string { return be.Token.Literal }
 func (be *BoolenExpression) String() string       { return be.Token.Literal }
 
 /*
+IF ELSE Expression
+Implements Expression interface
+*/
+type IfExpression struct {
+	Token       token.Token
+	Condition   Expression
+	Consequence *BlockStatement
+	Alternative *BlockStatement
+}
+
+func (ie *IfExpression) expressionNode()      {}
+func (ie *IfExpression) TokenLiteral() string { return ie.Token.Literal }
+func (ie *IfExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString("if(")
+	out.WriteString(ie.Condition.String())
+	out.WriteString(")")
+	out.WriteString(ie.Consequence.String())
+
+	if ie.Alternative != nil {
+		out.WriteString("else")
+		out.WriteString(ie.Alternative.String())
+	}
+	return out.String()
+}
+
+/*
+Function Literal
+Implements Expression
+*/
+type FunctionLiteral struct {
+	Token      token.Token
+	Parameters []*Identifier
+	Body       *BlockStatement
+}
+
+func (fe *FunctionLiteral) TokenLiteral() string { return fe.Token.Literal }
+func (fe *FunctionLiteral) expressionNode()      {}
+func (fe *FunctionLiteral) String() string {
+	var out bytes.Buffer
+	params := []string{}
+	for _, p := range fe.Parameters {
+		params = append(params, p.String())
+	}
+	out.WriteString(fe.TokenLiteral())
+	out.WriteString("(")
+	out.WriteString(strings.Join(params, ","))
+	out.WriteString(")")
+	out.WriteString(fe.Body.String())
+
+	return out.String()
+}
+
+/*
+function call expression
+implements Expression interface
+*/
+type CallExpression struct {
+	Token     token.Token
+	Function  Expression
+	Arguments []Expression
+}
+
+func (ce *CallExpression) expressionNode()      {}
+func (ce *CallExpression) TokenLiteral() string { return ce.Token.Literal }
+func (ce *CallExpression) String() string {
+	var out bytes.Buffer
+	args := []string{}
+	for _, a := range ce.Arguments {
+		args = append(args, a.String())
+	}
+	out.WriteString(ce.Function.String())
+	out.WriteString("(")
+	out.WriteString((strings.Join(args, ",")))
+	out.WriteString(")")
+
+	return out.String()
+}
+
+/*
 Prefix Expression , Implements Expressoin interface
 -5 or !true
 */
@@ -199,7 +300,7 @@ func (ie *InfixExpression) String() string {
 
 	out.WriteString("(")
 	out.WriteString(ie.Left.String())
-	out.WriteString(" " + ie.Operator + " ")
+	out.WriteString(ie.Operator)
 	out.WriteString(ie.Right.String())
 	out.WriteString(")")
 
