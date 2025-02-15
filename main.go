@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/sachinaralapura/shoebill/evaluator"
 	filereader "github.com/sachinaralapura/shoebill/fileReader"
 	"github.com/sachinaralapura/shoebill/lexer"
+	"github.com/sachinaralapura/shoebill/object"
 	"github.com/sachinaralapura/shoebill/parser"
 	"github.com/sachinaralapura/shoebill/repl"
 )
@@ -24,7 +26,7 @@ func main() {
 
 	parser := parser.New(lexer)
 	program := parser.ParseProgram()
-	fmt.Println(lexer)
-
 	fmt.Println(program)
+	var obj object.Object = evaluator.Eval(program)
+	fmt.Println(obj.Inspect())
 }
