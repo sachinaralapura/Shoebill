@@ -9,6 +9,7 @@ import (
 
 	"github.com/sachinaralapura/shoebill/evaluator"
 	"github.com/sachinaralapura/shoebill/lexer"
+	"github.com/sachinaralapura/shoebill/object"
 	"github.com/sachinaralapura/shoebill/parser"
 )
 
@@ -17,7 +18,7 @@ const p = ``
 
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
-
+	env := object.NewEnvirnoment()
 	for {
 		fmt.Print(PROMPT)
 		scanned := scanner.Scan()
@@ -36,7 +37,7 @@ func Start(in io.Reader, out io.Writer) {
 			printParserErrors(out, p.Errors())
 		}
 
-		evaluated := evaluator.Eval(program)
+		evaluated := evaluator.Eval(program, env)
 		if evaluated != nil {
 			io.WriteString(out, evaluated.Inspect())
 			io.WriteString(out, "\n")
@@ -46,7 +47,6 @@ func Start(in io.Reader, out io.Writer) {
 		io.WriteString(out, program.String())
 		io.WriteString(out, "\n")
 	}
-
 }
 
 func createParser(line string) *parser.Parser {
@@ -59,7 +59,6 @@ func createParser(line string) *parser.Parser {
 	l.LoadBuffer()
 	p := parser.New(l)
 	return p
-
 }
 
 func printParserErrors(out io.Writer, errors []string) {

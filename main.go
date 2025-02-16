@@ -27,6 +27,8 @@ func main() {
 	parser := parser.New(lexer)
 	program := parser.ParseProgram()
 	fmt.Println(program)
-	var obj object.Object = evaluator.Eval(program)
+
+	env := object.NewEnvirnoment()
+	var obj object.Object = evaluator.Eval(program, env)
 	fmt.Println(obj.Inspect())
 }

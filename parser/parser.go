@@ -12,6 +12,8 @@ import (
 const (
 	_ int = iota
 	LOWEST
+	OR          // ||
+	AND         // &&
 	EQUALS      // ==
 	LESSGREATER // > or <
 	SUM         // +
@@ -32,6 +34,8 @@ var precedences = map[token.TokenType]int{
 	token.ASTERISK:  PRODUCT,
 	token.MODULO:    PRODUCT,
 	token.LPAREN:    CALL,
+	token.AND:       AND,
+	token.OR:        OR,
 }
 
 type (
@@ -386,6 +390,8 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.LT, p.parseInfixExpression)
 	p.registerInfix(token.GT, p.parseInfixExpression)
 	p.registerInfix(token.LPAREN, p.parseCallExpression)
+	p.registerInfix(token.AND, p.parseInfixExpression)
+	p.registerInfix(token.OR, p.parseInfixExpression)
 	// read next two token so the curToken and peekToken are read
 	p.NextToken()
 	p.NextToken()

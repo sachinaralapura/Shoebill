@@ -1,6 +1,8 @@
 package evaluator
 
 import (
+	"fmt"
+
 	"github.com/sachinaralapura/shoebill/ast"
 	"github.com/sachinaralapura/shoebill/object"
 )
@@ -11,27 +13,47 @@ var (
 	FALSE = &object.Boolean{Value: false}
 )
 
-func Eval(node ast.Node) object.Object {
+func Eval(node ast.Node, env *object.Environment) object.Object {
 	switch node := node.(type) {
 	case *ast.Program:
-		return evalStatements(node.Statements)
+		return evalProgram(node.Statements, env)
+
 	case *ast.LetStatement:
+		val := Eval(node.Value, env)
+		if isError(val) {
+			return val
+		}
+		env.Set(node.Name.Value, val)
 
 	case *ast.ReturnStatement:
+		val := Eval(node.ReturnValue, env)
+		if isError(val) {
+			return val
+		}
+		return &object.Return{Value: val}
 
 	case *ast.ExpressionStatement:
-		return Eval(node.Expression)
+		return Eval(node.Expression, env)
 
 	case *ast.BlockStatement:
-		return evalStatements(node.Statements)
+		return evalBlockStatements(node.Statements, env)
 
 	case *ast.PrefixExpression:
-		right := Eval(node.Right)
+		right := Eval(node.Right, env)
+		if isError(right) {
+			return right
+		}
 		return evalPrefixExpression(node.Operator, right)
 
 	case *ast.InfixExpression:
-		left := Eval(node.Left)
-		right := Eval(node.Right)
+		left := Eval(node.Left, env)
+		if isError(left) {
+			return left
+		}
+		right := Eval(node.Right, env)
+		if isError(right) {
+			return right
+		}
 		return evalInfixExpression(node.Operator, left, right)
 
 	case *ast.IntegerLiteral:
@@ -41,19 +63,92 @@ func Eval(node ast.Node) object.Object {
 		return nativeBoolToBooleanObject(node.Value)
 
 	case *ast.IfExpression:
-		return evalIfExpressionObject(node)
+		return evalIfExpressionObject(node, env)
+
+	case *ast.Identifier:
+		return evalIdentifier(node, env)
+
+	case *ast.FunctionLiteral:
+		params := node.Parameters
+		body := node.Body
+		return &object.FunctionObject{Parameters: params, Body: body, Env: env}
+
+	case *ast.CallExpression:
+		function := Eval(node.Function, env)
+		if isError(function) {
+			return function
+		}
+		args := evalExpressions(node.Arguments, env)
+		if len(args) == 1 && isError(args[0]) {
+			return args[0]
+		}
+		return applyFunction(function, args)
 	}
 	return nil
 }
 
+func evalExpressions(exps []ast.Expression, env *object.Environment) []object.Object {
+	var results []object.Object
+	for _, e := range exps {
+		evaluated := Eval(e, env)
+		if isError(evaluated) {
+			return []object.Object{evaluated}
+		}
+		results = append(results, evaluated)
+	}
+	return results
+}
+
+func applyFunction(fn object.Object, args []object.Object) object.Object {
+	function, ok := fn.(*object.FunctionObject)
+	if !ok {
+		return newErrorObject("not a function: %s", fn.Type())
+	}
+	extendedEnv := extendFunctionEnv(function, args)
+	evaluated := Eval(function.Body, extendedEnv)
+	return unwrapReturnValue(evaluated)
+}
+
+func extendFunctionEnv(fn *object.FunctionObject, args []object.Object) *object.Environment {
+	env := object.NewEnclosedEnvironment(fn.Env)
+	for id, params := range fn.Parameters {
+		env.Set(params.Value, args[id])
+	}
+	return env
+}
+
+func unwrapReturnValue(obj object.Object) object.Object {
+	if returnValue, ok := obj.(*object.Return); ok {
+		return returnValue.Value
+	}
+	return obj
+}
+
 func evalInfixExpression(operator string, left, right object.Object) object.Object {
-	if left.Type() == object.INTEGER_OBJ && right.Type() == object.INTEGER_OBJ {
+	leftType := left.Type()
+	rightType := right.Type()
+
+	if leftType == object.INTEGER_OBJ && rightType == object.INTEGER_OBJ {
 		return evalIntegerInfixExpression(operator, left, right)
 	}
-	if left.Type() == object.BOOLEAN_OBJ && right.Type() == object.BOOLEAN_OBJ {
+	if leftType == object.BOOLEAN_OBJ && rightType == object.BOOLEAN_OBJ {
 		return evalBooleanInfixExpression(operator, left, right)
 	}
-	return NULL
+	if leftType != rightType {
+		return newErrorObject("type mismatch: %s %s %s", leftType, operator, rightType)
+	}
+	return newErrorObject("unknown operator: %s %s %s", leftType, operator, rightType)
+}
+
+func evalPrefixExpression(operator string, right object.Object) object.Object {
+	switch operator {
+	case "!":
+		return evalBangOperatorPrefixExpression(right)
+	case "-":
+		return evalMinusPrefixExpression(right)
+	default:
+		return newErrorObject("unknown operator: %s%s", operator, right.Type())
+	}
 }
 
 func evalBooleanInfixExpression(operator string, left, right object.Object) object.Object {
@@ -62,8 +157,16 @@ func evalBooleanInfixExpression(operator string, left, right object.Object) obje
 		return nativeBoolToBooleanObject(left == right) // pointer comparsion
 	case "!=":
 		return nativeBoolToBooleanObject(left != right)
+	case "&&":
+		leftObj := left.(*object.Boolean)
+		rightObj := right.(*object.Boolean)
+		return nativeBoolToBooleanObject(leftObj.Value && rightObj.Value)
+	case "||":
+		leftObj := left.(*object.Boolean)
+		rightObj := right.(*object.Boolean)
+		return nativeBoolToBooleanObject(leftObj.Value || rightObj.Value)
 	default:
-		return NULL
+		return newErrorObject("unknown operator: %s %s %s", left.Type(), operator, right.Type())
 	}
 }
 
@@ -90,18 +193,7 @@ func evalIntegerInfixExpression(operator string, left, right object.Object) obje
 	case "==":
 		return nativeBoolToBooleanObject(leftValue == rightValue)
 	default:
-		return NULL
-	}
-}
-
-func evalPrefixExpression(operator string, right object.Object) object.Object {
-	switch operator {
-	case "!":
-		return evalBangOperatorExpression(right)
-	case "-":
-		return evalMinusPrefixExpression(right)
-	default:
-		return NULL
+		return newErrorObject("unknown operator : %s %s %s", left.Type(), operator, right.Type())
 	}
 }
 
@@ -109,12 +201,14 @@ func evalMinusPrefixExpression(right object.Object) object.Object {
 	switch right := right.(type) {
 	case *object.Integer:
 		return &object.Integer{Value: -right.Value}
+	case *object.ErrorObject:
+		return right
 	default:
-		return NULL
+		return newErrorObject("unknown operator: -%s", right.Type())
 	}
 }
 
-func evalBangOperatorExpression(right object.Object) object.Object {
+func evalBangOperatorPrefixExpression(right object.Object) object.Object {
 	switch right {
 	case TRUE:
 		return FALSE
@@ -127,23 +221,55 @@ func evalBangOperatorExpression(right object.Object) object.Object {
 	}
 }
 
-func evalIfExpressionObject(ie *ast.IfExpression) object.Object {
-	condition := Eval(ie.Condition)
+func evalIfExpressionObject(ie *ast.IfExpression, env *object.Environment) object.Object {
+	condition := Eval(ie.Condition, env)
+	if isError(condition) {
+		return condition
+	}
 	if isTruthy(condition) {
-		return Eval(ie.Consequence)
+		return Eval(ie.Consequence, env)
 	} else if ie.Alternative != nil {
-		return Eval(ie.Alternative)
+		return Eval(ie.Alternative, env)
 	} else {
 		return NULL
 	}
 }
 
-func evalStatements(statements []ast.Statement) object.Object {
+func evalProgram(statements []ast.Statement, env *object.Environment) object.Object {
 	var obj object.Object
 	for _, stmt := range statements {
-		obj = Eval(stmt)
+		obj = Eval(stmt, env)
+
+		switch obj := obj.(type) {
+		case *object.Return:
+			return obj.Value
+		case *object.ErrorObject:
+			return obj
+		}
 	}
 	return obj
+}
+
+func evalBlockStatements(statements []ast.Statement, env *object.Environment) object.Object {
+	var result object.Object
+	for _, stmt := range statements {
+		result = Eval(stmt, env)
+		if result != nil {
+			rt := result.Type()
+			if rt == object.RETURN_OBJ || rt == object.ERROR_OBJ {
+				return result
+			}
+		}
+	}
+	return result
+}
+
+func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object {
+	expression, ok := env.Get(node.Value)
+	if !ok {
+		return newErrorObject("identifier not found: %s", node.Value)
+	}
+	return expression
 }
 
 func nativeBoolToBooleanObject(value bool) object.Object {
@@ -170,4 +296,15 @@ func isTruthy(obj object.Object) bool {
 	default:
 		return false
 	}
+}
+
+func newErrorObject(format string, a ...any) *object.ErrorObject {
+	return &object.ErrorObject{Message: fmt.Sprintf(format, a...)}
+}
+
+func isError(node object.Object) bool {
+	if node != nil {
+		return node.Type() == object.ERROR_OBJ
+	}
+	return false
 }

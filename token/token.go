@@ -29,6 +29,8 @@ const (
 	BANG      = "!"
 	LT        = "<"
 	GT        = ">"
+	AND       = "&&"
+	OR        = "||"
 	EQUAL     = "=="
 	NOT_EQUAL = "!="
 

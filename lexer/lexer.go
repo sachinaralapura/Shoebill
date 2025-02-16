@@ -172,6 +172,16 @@ func (l *Lexer) NextToken() token.Token {
 		} else {
 			tok = newToken(token.BANG, curChar, l.currentLineNumber)
 		}
+	case '&':
+		if l.peekChar() == '&' {
+			l.readChar()
+			tok = newToken(token.AND, "&&", l.currentLineNumber)
+		}
+	case '|':
+		if l.peekChar() == '|' {
+			l.readChar()
+			tok = newToken(token.OR, "||", l.currentLineNumber)
+		}
 	case '"':
 		tok = newToken(token.QUOTE, curChar, l.currentLineNumber)
 	case ';':
