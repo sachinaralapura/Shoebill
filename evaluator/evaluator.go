@@ -59,6 +59,9 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 	case *ast.IntegerLiteral:
 		return &object.Integer{Value: node.Value}
 
+	case *ast.StringLiteral:
+		return &object.String{Value: node.Value}
+
 	case *ast.BoolenExpression:
 		return nativeBoolToBooleanObject(node.Value)
 
@@ -104,17 +107,23 @@ func applyFunction(fn object.Object, args []object.Object) object.Object {
 	if !ok {
 		return newErrorObject("not a function: %s", fn.Type())
 	}
-	extendedEnv := extendFunctionEnv(function, args)
+	extendedEnv, ok := extendFunctionEnv(function, args)
+	if !ok {
+		return newErrorObject("excepted no. of arguments not passed to function")
+	}
 	evaluated := Eval(function.Body, extendedEnv)
 	return unwrapReturnValue(evaluated)
 }
 
-func extendFunctionEnv(fn *object.FunctionObject, args []object.Object) *object.Environment {
+func extendFunctionEnv(fn *object.FunctionObject, args []object.Object) (*object.Environment, bool) {
 	env := object.NewEnclosedEnvironment(fn.Env)
+	if len(fn.Parameters) != len(args) {
+		return nil, false
+	}
 	for id, params := range fn.Parameters {
 		env.Set(params.Value, args[id])
 	}
-	return env
+	return env, true
 }
 
 func unwrapReturnValue(obj object.Object) object.Object {
@@ -134,6 +143,9 @@ func evalInfixExpression(operator string, left, right object.Object) object.Obje
 	if leftType == object.BOOLEAN_OBJ && rightType == object.BOOLEAN_OBJ {
 		return evalBooleanInfixExpression(operator, left, right)
 	}
+	if leftType == object.STRING_OBJ && rightType == object.STRING_OBJ {
+		return evalStringInfixExpression(operator, left, right)
+	}
 	if leftType != rightType {
 		return newErrorObject("type mismatch: %s %s %s", leftType, operator, rightType)
 	}
@@ -148,25 +160,6 @@ func evalPrefixExpression(operator string, right object.Object) object.Object {
 		return evalMinusPrefixExpression(right)
 	default:
 		return newErrorObject("unknown operator: %s%s", operator, right.Type())
-	}
-}
-
-func evalBooleanInfixExpression(operator string, left, right object.Object) object.Object {
-	switch operator {
-	case "==":
-		return nativeBoolToBooleanObject(left == right) // pointer comparsion
-	case "!=":
-		return nativeBoolToBooleanObject(left != right)
-	case "&&":
-		leftObj := left.(*object.Boolean)
-		rightObj := right.(*object.Boolean)
-		return nativeBoolToBooleanObject(leftObj.Value && rightObj.Value)
-	case "||":
-		leftObj := left.(*object.Boolean)
-		rightObj := right.(*object.Boolean)
-		return nativeBoolToBooleanObject(leftObj.Value || rightObj.Value)
-	default:
-		return newErrorObject("unknown operator: %s %s %s", left.Type(), operator, right.Type())
 	}
 }
 
@@ -194,6 +187,34 @@ func evalIntegerInfixExpression(operator string, left, right object.Object) obje
 		return nativeBoolToBooleanObject(leftValue == rightValue)
 	default:
 		return newErrorObject("unknown operator : %s %s %s", left.Type(), operator, right.Type())
+	}
+}
+
+func evalStringInfixExpression(operator string, left, right object.Object) object.Object {
+	if operator != "+" {
+		return newErrorObject("unknown operator: %s %s %s", left.Type(), operator, right.Type())
+	}
+	leftValue := left.(*object.String).Value
+	rightValue := right.(*object.String).Value
+	return &object.String{Value: leftValue + rightValue}
+}
+
+func evalBooleanInfixExpression(operator string, left, right object.Object) object.Object {
+	switch operator {
+	case "==":
+		return nativeBoolToBooleanObject(left == right) // pointer comparsion
+	case "!=":
+		return nativeBoolToBooleanObject(left != right)
+	case "&&":
+		leftObj := left.(*object.Boolean)
+		rightObj := right.(*object.Boolean)
+		return nativeBoolToBooleanObject(leftObj.Value && rightObj.Value)
+	case "||":
+		leftObj := left.(*object.Boolean)
+		rightObj := right.(*object.Boolean)
+		return nativeBoolToBooleanObject(leftObj.Value || rightObj.Value)
+	default:
+		return newErrorObject("unknown operator: %s %s %s", left.Type(), operator, right.Type())
 	}
 }
 

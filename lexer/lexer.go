@@ -128,11 +128,14 @@ func (l *Lexer) readNumber() []rune {
 }
 
 func (l *Lexer) readString() []rune {
-	l.readChar() // skip '\"'
+	l.readChar() // skip '"'
 	var currentBuffer *[]rune = l.CurBuf
 	initPos := l.position
-	for isAcceptableStringCharacter(l.ch) {
+	for {
 		l.readChar()
+		if l.ch == '"' || l.ch == 0 {
+			break
+		}
 	}
 	if currentBuffer != l.CurBuf {
 		prevBufPart := (*currentBuffer)[initPos:]
@@ -183,7 +186,9 @@ func (l *Lexer) NextToken() token.Token {
 			tok = newToken(token.OR, "||", l.currentLineNumber)
 		}
 	case '"':
-		tok = newToken(token.QUOTE, curChar, l.currentLineNumber)
+		tok.Type = token.STRING
+		tok.Line = l.currentLineNumber
+		tok.Literal = string(l.readString())
 	case ';':
 		tok = newToken(token.SEMICOLON, curChar, l.currentLineNumber)
 	case '(':
@@ -267,9 +272,9 @@ func isIdentifierCharacter(char rune) bool {
 }
 
 // isAcceptableIdentifierCharacter checks if the character is acceptable within a broader context of identifier if you wish to extend it later.
-func isAcceptableStringCharacter(char rune) bool {
-	return regexp.MustCompile("^[^\"]$").MatchString(string(char))
-}
+// func isAcceptableStringCharacter(char rune) bool {
+// 	return regexp.MustCompile("^[^\"]$").MatchString(string(char))
+// }
 
 func isDigit(char rune) bool {
 	return regexp.MustCompile("^[0-9.]$").MatchString(string(char))
