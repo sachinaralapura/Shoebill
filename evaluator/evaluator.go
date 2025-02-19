@@ -103,16 +103,22 @@ func evalExpressions(exps []ast.Expression, env *object.Environment) []object.Ob
 }
 
 func applyFunction(fn object.Object, args []object.Object) object.Object {
-	function, ok := fn.(*object.FunctionObject)
-	if !ok {
+	switch fn := fn.(type) {
+	case *object.FunctionObject:
+		extendedEnv, ok := extendFunctionEnv(fn, args)
+		if !ok {
+			return newErrorObject("excepted no. of arguments not passed to function")
+		}
+		evaluated := Eval(fn.Body, extendedEnv)
+		return unwrapReturnValue(evaluated)
+
+	case *object.BuildIn:
+		return fn.Value(args...)
+
+	default:
 		return newErrorObject("not a function: %s", fn.Type())
 	}
-	extendedEnv, ok := extendFunctionEnv(function, args)
-	if !ok {
-		return newErrorObject("excepted no. of arguments not passed to function")
-	}
-	evaluated := Eval(function.Body, extendedEnv)
-	return unwrapReturnValue(evaluated)
+
 }
 
 func extendFunctionEnv(fn *object.FunctionObject, args []object.Object) (*object.Environment, bool) {
@@ -286,11 +292,14 @@ func evalBlockStatements(statements []ast.Statement, env *object.Environment) ob
 }
 
 func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object {
-	expression, ok := env.Get(node.Value)
-	if !ok {
-		return newErrorObject("identifier not found: %s", node.Value)
+	if val, ok := env.Get(node.Value); ok {
+		return val
 	}
-	return expression
+
+	if buildin, ok := BuildIns[node.Value]; ok {
+		return buildin
+	}
+	return newErrorObject("identifier not found: %s", node.Value)
 }
 
 func nativeBoolToBooleanObject(value bool) object.Object {

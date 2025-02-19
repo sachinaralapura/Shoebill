@@ -16,15 +16,25 @@ const (
 	RETURN_OBJ   = "RETURN"
 	ERROR_OBJ    = "ERROR"
 	FUCNTION_OBJ = "FUNCTION"
+	BUILDIN_OBJ  = "BUILDIN"
 )
 
 type ObjecType string
+type BuildInFunc func(args ...Object) Object
 
 // Object interface
 type Object interface {
 	Type() ObjecType
 	Inspect() string
 }
+
+// build in function Object
+type BuildIn struct {
+	Value BuildInFunc
+}
+
+func (bi *BuildIn) Inspect() string { return BUILDIN_OBJ + "function" }
+func (bi *BuildIn) Type() ObjecType { return BUILDIN_OBJ }
 
 // Integer Type Object
 type Integer struct {

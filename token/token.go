@@ -41,6 +41,8 @@ const (
 	RPAREN    = ")"
 	LBRACE    = "{"
 	RBRACE    = "}"
+	LBRACKET  = "["
+	RBRACKET  = "]"
 	QUOTE     = "\""
 
 	// Keywords

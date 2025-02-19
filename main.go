@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/sachinaralapura/shoebill/evaluator"
@@ -26,9 +25,7 @@ func main() {
 
 	parser := parser.New(lexer)
 	program := parser.ParseProgram()
-	fmt.Println(program)
 
 	env := object.NewEnvirnoment()
-	var obj object.Object = evaluator.Eval(program, env)
-	fmt.Println(obj.Inspect())
+	evaluator.Eval(program, env)
 }
