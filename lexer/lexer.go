@@ -201,6 +201,10 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.LBRACE, curChar, l.currentLineNumber)
 	case '}':
 		tok = newToken(token.RBRACE, curChar, l.currentLineNumber)
+	case '[':
+		tok = newToken(token.LBRACKET, curChar, l.currentLineNumber)
+	case ']':
+		tok = newToken(token.RBRACKET, curChar, l.currentLineNumber)
 	case '+':
 		tok = newToken(token.PLUS, curChar, l.currentLineNumber)
 	case '-':

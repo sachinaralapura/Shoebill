@@ -17,6 +17,7 @@ const (
 	ERROR_OBJ    = "ERROR"
 	FUCNTION_OBJ = "FUNCTION"
 	BUILDIN_OBJ  = "BUILDIN"
+	ARRAY_OBJ    = "ARRAY"
 )
 
 type ObjecType string
@@ -59,6 +60,24 @@ type Boolean struct {
 
 func (i *Boolean) Inspect() string { return fmt.Sprintf("%t", i.Value) }
 func (i *Boolean) Type() ObjecType { return BOOLEAN_OBJ }
+
+// Array Type Object
+type Array struct {
+	Elements []Object
+}
+
+func (a *Array) Type() ObjecType { return ARRAY_OBJ }
+func (a *Array) Inspect() string {
+	var out bytes.Buffer
+	elements := []string{}
+	for _, e := range a.Elements {
+		elements = append(elements, e.Inspect())
+	}
+	out.WriteString("[")
+	out.WriteString(strings.Join(elements, ","))
+	out.WriteString("]")
+	return out.String()
+}
 
 // Null Type Object
 type Null struct{}

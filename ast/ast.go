@@ -189,6 +189,47 @@ func (be *BoolenExpression) expressionNode()      {}
 func (be *BoolenExpression) TokenLiteral() string { return be.Token.Literal }
 func (be *BoolenExpression) String() string       { return be.Token.Literal }
 
+// Array Expression
+// implement Expression interface
+type ArrayExpression struct {
+	Token    token.Token
+	Elements []Expression
+}
+
+func (ae *ArrayExpression) expressionNode()      {}
+func (ae *ArrayExpression) TokenLiteral() string { return ae.Token.Literal }
+func (ae *ArrayExpression) String() string {
+	var out bytes.Buffer
+
+	elements := []string{}
+	for _, ele := range ae.Elements {
+		elements = append(elements, ele.String())
+	}
+	out.WriteString("[")
+	out.WriteString(strings.Join(elements, ","))
+	out.WriteString("]")
+	return out.String()
+}
+
+// Index Expression
+// <expression>[<expression>]
+type IndexExpression struct {
+	Token token.Token
+	Left  Expression
+	Index Expression
+}
+
+func (ie *IndexExpression) expressionNode()      {}
+func (ie *IndexExpression) TokenLiteral() string { return ie.Token.Literal }
+func (ie *IndexExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString(ie.Left.String())
+	out.WriteString("[")
+	out.WriteString(ie.Index.String())
+	out.WriteString("]")
+	return out.String()
+}
+
 /*
 IF ELSE Expression
 Implements Expression interface
