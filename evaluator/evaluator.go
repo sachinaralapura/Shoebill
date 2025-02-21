@@ -251,6 +251,8 @@ func evalIndexExpression(left, index object.Object) object.Object {
 	switch {
 	case left.Type() == object.ARRAY_OBJ && index.Type() == object.INTEGER_OBJ:
 		return evalArrayIndexExpression(left, index)
+	case left.Type() == object.STRING_OBJ && index.Type() == object.INTEGER_OBJ:
+		return evalStringIndexExpression(left, index)
 	default:
 		return newErrorObject("index operator not supported: %s", left.Type())
 	}
@@ -264,6 +266,17 @@ func evalArrayIndexExpression(array, index object.Object) object.Object {
 		return NULL
 	}
 	return arrayObject.Elements[i]
+}
+
+func evalStringIndexExpression(str, index object.Object) object.Object {
+	stringObj := str.(*object.String)
+	i := index.(*object.Integer).Value
+	r := []rune(stringObj.Value)
+	max := int64(len(r) - 1)
+	if i < 0 || i > max {
+		return NULL
+	}
+	return &object.String{Value: string(r[i])}
 }
 
 func evalMinusPrefixExpression(right object.Object) object.Object {
