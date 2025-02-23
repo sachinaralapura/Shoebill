@@ -191,6 +191,8 @@ func (l *Lexer) NextToken() token.Token {
 		tok.Literal = string(l.readString())
 	case ';':
 		tok = newToken(token.SEMICOLON, curChar, l.currentLineNumber)
+	case ':':
+		tok = newToken(token.COLON, curChar, l.currentLineNumber)
 	case '(':
 		tok = newToken(token.LPAREN, curChar, l.currentLineNumber)
 	case ')':

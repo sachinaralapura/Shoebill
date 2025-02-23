@@ -58,7 +58,7 @@ func restBuildIn(args ...object.Object) object.Object {
 	case *object.Array:
 		length := len(arg.Elements)
 		if length > 0 {
-			newElements := make([]object.Object, length-1, length-1)
+			newElements := make([]object.Object, length-1)
 			copy(newElements, arg.Elements[1:length])
 			return &object.Array{Elements: newElements}
 		}
@@ -78,7 +78,7 @@ func pushBuildIn(args ...object.Object) object.Object {
 
 	arg := args[0].(*object.Array)
 	length := len(arg.Elements)
-	newElements := make([]object.Object, length+1, length+1)
+	newElements := make([]object.Object, length+1)
 	copy(newElements, arg.Elements)
 	newElements[length] = args[1]
 

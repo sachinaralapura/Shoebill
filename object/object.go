@@ -3,6 +3,7 @@ package object
 import (
 	"bytes"
 	"fmt"
+	"hash/fnv"
 	"strings"
 
 	"github.com/sachinaralapura/shoebill/ast"
@@ -18,6 +19,7 @@ const (
 	FUCNTION_OBJ = "FUNCTION"
 	BUILDIN_OBJ  = "BUILDIN"
 	ARRAY_OBJ    = "ARRAY"
+	HASH_OBJ     = "HASH"
 )
 
 type ObjecType string
@@ -38,28 +40,48 @@ func (bi *BuildIn) Inspect() string { return BUILDIN_OBJ + "function" }
 func (bi *BuildIn) Type() ObjecType { return BUILDIN_OBJ }
 
 // Integer Type Object
+// Implements object and Hashable interface
 type Integer struct {
 	Value int64
 }
 
 func (i *Integer) Inspect() string { return fmt.Sprintf("%d", i.Value) }
 func (i *Integer) Type() ObjecType { return INTEGER_OBJ }
+func (i *Integer) HashKey() HashKey {
+	return HashKey{Type: i.Type(), Value: uint64(i.Value)}
+}
 
 // String Type Object
+// Implements object and Hashable interface
 type String struct {
 	Value string
 }
 
 func (s *String) Inspect() string { return s.Value }
 func (s *String) Type() ObjecType { return STRING_OBJ }
+func (s *String) HashKey() HashKey {
+	h := fnv.New64a()
+	h.Write([]byte(s.Value))
+	return HashKey{Type: s.Type(), Value: h.Sum64()}
+}
 
 // Boolean Type Object
+// Implements object and Hashable interface
 type Boolean struct {
 	Value bool
 }
 
 func (i *Boolean) Inspect() string { return fmt.Sprintf("%t", i.Value) }
 func (i *Boolean) Type() ObjecType { return BOOLEAN_OBJ }
+func (b *Boolean) HashKey() HashKey {
+	var value uint64
+	if b.Value {
+		value = 1
+	} else {
+		value = 0
+	}
+	return HashKey{Type: b.Type(), Value: value}
+}
 
 // Array Type Object
 type Array struct {

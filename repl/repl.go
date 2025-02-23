@@ -14,7 +14,6 @@ import (
 )
 
 const PROMPT = ">>"
-const p = ``
 
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
@@ -32,6 +31,7 @@ func Start(in io.Reader, out io.Writer) {
 		}
 		p := createParser(line)
 		program := p.ParseProgram()
+		// fmt.Println(program)
 		if len(p.Errors()) != 0 {
 			printParserErrors(out, p.Errors())
 		}
